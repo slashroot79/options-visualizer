@@ -78,12 +78,16 @@
     border:1px solid var(--blue); border-radius:12px; padding:12px 15px; margin:14px 0; font-size:13.5px; }
   .occ-banner .k { font-size:26px; }
   .ledger { display:flex; flex-direction:column; gap:8px; margin-top:4px; }
-  .ledger-row { display:flex; gap:12px; align-items:flex-start; background:var(--bg);
+  .ledger-row { display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap; background:var(--bg);
     border:1px solid var(--border); border-radius:10px; padding:11px 13px; animation: pop .25s ease; }
   .ledger-row.latest { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; background:var(--panel2); }
   @keyframes pop { from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none} }
   .lr-num { flex:none; width:24px; height:24px; border-radius:7px; background:#22304d; color:var(--accent);
     font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .lr-main { flex:1 1 auto; min-width:0; }
+  .lr-detail { flex:none; margin-left:auto; text-align:right; font-size:11px; color:var(--muted);
+    line-height:1.6; white-space:nowrap; padding-left:10px; }
+  .lr-detail .dk { color:#6e7681; display:inline-block; min-width:44px; text-align:left; }
   .lr-title { font-weight:600; font-size:13.5px; }
   .lr-money { color:var(--muted); font-size:12px; margin-top:2px; }
   .lr-people { display:flex; gap:7px; flex-wrap:wrap; margin-top:7px; }
@@ -200,6 +204,7 @@
 
     <div class="controls" style="margin-top:14px">
       <div class="ctrl"><label>Strike (K)</label><input id="cK" type="number" value="105" step="1"/></div>
+      <div class="ctrl"><label>Stock at purchase</label><input id="cS0" type="number" value="100" step="1"/></div>
       <div class="ctrl"><label>Premium paid ($/sh)</label><input id="cP0" type="number" value="2" step="0.25"/></div>
       <div class="ctrl"><label>Stock at expiration</label><input id="cS1" type="number" value="115" step="1"/></div>
       <div class="ctrl" id="cCostBox" style="display:none"><label>Dave's stock cost ($/sh)</label><input id="cCost" type="number" value="100" step="1"/></div>
@@ -392,35 +397,36 @@ function draw(){
   const intrinsic = type.toLowerCase().includes("call") ? Math.max(spot-K,0) : Math.max(K-spot,0);
   $("stats").innerHTML =
     stat("P&amp;L at $"+spot, fmt(pnlNow), pnlNow>=0?"g":"r") +
-    stat("Value at exp. (intrinsic)", "$"+intrinsic.toFixed(2)+"/sh", "b") +
     stat("Breakeven", "$"+m.be.map(b=>b.toFixed(1)).join(" / "), "y") +
     stat("Max profit", (typeof m.maxP==="string")?m.maxP:fmt(m.maxP), "g") +
     stat("Max loss", (typeof m.maxL==="string")?m.maxL:fmt(m.maxL), "r") +
-    stat("Premium paid (entry)", "$"+prem.toFixed(2)+"/sh · $"+(prem*100).toFixed(0), "m");
+    stat("Premium paid (entry)", "$"+prem.toFixed(2)+"/sh · $"+(prem*100).toFixed(0), "m") +
+    stat("Premium at expiration", "$"+intrinsic.toFixed(2)+"/sh · $"+(intrinsic*100).toFixed(0), "b");
 }
 [posEl,strikeEl,premEl,buyEl,spotEl].forEach(el=> el.addEventListener("input",draw));
 draw();
 
 // ---------- Clearinghouse chain (accumulating ledger) ----------
-// All dollar figures below are computed from the strike (K), premium paid (P0),
-// and expiration stock price (S1) — using intrinsic value at expiration (no time value).
-function buildSteps(instr, cov, K, P0, S1, C){
+// All dollar figures below are computed from the strike (K), stock at purchase (S0),
+// premium paid (P0), and expiration stock price (S1) — intrinsic value only (no time value).
+function buildSteps(instr, cov, K, S0, P0, S1, C){
   const isCall = instr==="call";
   const itm = isCall ? (S1 > K) : (S1 < K);
   const usd = v => "$"+Math.round(v);
   const optName = "$"+K+" "+(isCall?"CALL":"PUT");
+  const P1 = isCall ? Math.max(S1-K,0) : Math.max(K-S1,0);   // option value at $S1 (intrinsic)
+  const det = (so,po,sc,pc) => ({K, sOpen:so, pOpen:po, sClose:sc, pClose:pc});
   if(!itm){
     return [
-      { title:"Before any trade", right:null, oblig:null, oi:0, money:"",
-        msg:"Ready. Set the strike, premium, and expiration price above, then click Next step." },
-      { title:"Expires worthless (out of the money)", right:{name:"—"}, oblig:{name:"—"}, oi:0, money:"Option expires worthless",
+      { title:"Before any trade", right:null, oblig:null, oi:0, money:"", det:null,
+        msg:"Ready. Set the strike, stock/premium at purchase, and expiration price above, then click Next step." },
+      { title:"Expires worthless (out of the money)", right:{name:"—"}, oblig:{name:"—"}, oi:0, money:"Option expires worthless", det:det(S0,P0,S1,0),
         msg:"At $"+S1+", the "+optName+" is OUT of the money, so it EXPIRES WORTHLESS — no exercise, no assignment. Whoever holds it loses the premium they paid; the writer keeps the premium. To watch the contract change hands and get exercised/assigned, set an IN-THE-MONEY expiration price: "+(isCall?"ABOVE":"BELOW")+" the $"+K+" strike." }
     ];
   }
-  const P1 = isCall ? (S1-K) : (K-S1);          // option's intrinsic value at $S1
   const entry = P0*100, moved = P1*100, youPnL = moved-entry;
   const bias = isCall ? "BULLISH (right to BUY at $"+K+")" : "BEARISH (right to SELL at $"+K+")";
-  const step1msg = "LINK 1 — Alice PRINTS a "+optName+" (sell to open). You BUY it (buy to open). You pay "+usd(entry)+" → Alice gets "+usd(entry)+". A "+(isCall?"call":"put")+" buyer is "+bias+". The OCC records: You = right, Alice = obligation.";
+  const step1msg = "LINK 1 — Alice PRINTS a "+optName+" (sell to open). You BUY it (buy to open) at $"+S0+" for "+usd(entry)+" → Alice gets "+usd(entry)+". A "+(isCall?"call":"put")+" buyer is "+bias+". The OCC records: You = right, Alice = obligation.";
   const step2msg = "LINK 2 — Stock moves to $"+S1+", so the option is now worth "+usd(moved)+" (intrinsic). You SELL TO CLOSE; Carol BUYS TO OPEN. Carol pays "+usd(moved)+" → you get "+usd(moved)+" ("+(youPnL>=0?"profit ":"loss ")+fmt(youPnL)+"). The RIGHT moved You→Carol; Alice's obligation never moved.";
   const step3msg = "LINK 3 — Alice BUYS TO CLOSE at "+usd(moved)+" (Alice "+fmt(-youPnL)+"); Dave SELLS TO OPEN as "+(cov==="covered"?"a covered/cash-secured writer":"a NAKED writer")+", collecting "+usd(moved)+". The OBLIGATION moved Alice→Dave. The contract is now Dave↔Carol — all-new people.";
   let step4msg, money4, obligName;
@@ -444,33 +450,41 @@ function buildSteps(instr, cov, K, P0, S1, C){
   }
   const daveRole3 = cov==="covered" ? (isCall?"owns shares":"cash-secured") : "naked";
   return [
-    { title:"Before any trade", right:null, oblig:null, oi:0, money:"",
-      msg:"Ready. No contract exists yet. The OCC will sit between every buyer and seller and GUARANTEE the trade — so nobody depends on a specific person. Set the strike, premium, and expiration price above, then click Next step." },
-    { title:"Link 1 · Alice writes → You buy", right:{name:"You"}, oblig:{name:"Alice"}, oi:1,
+    { title:"Before any trade", right:null, oblig:null, oi:0, money:"", det:null,
+      msg:"Ready. No contract exists yet. The OCC will sit between every buyer and seller and GUARANTEE the trade — so nobody depends on a specific person. Set the strike, stock/premium at purchase, and expiration price above, then click Next step." },
+    { title:"Link 1 · Alice writes → You buy", right:{name:"You"}, oblig:{name:"Alice"}, oi:1, det:det(S0,P0,S1,P1),
       money:"You "+fmt(-entry)+" · Alice "+fmt(entry), msg:step1msg },
-    { title:"Link 2 · You sell to close → Carol buys", right:{name:"Carol"}, oblig:{name:"Alice"}, oi:1,
+    { title:"Link 2 · You sell to close → Carol buys", right:{name:"Carol"}, oblig:{name:"Alice"}, oi:1, det:det(S1,P1,S1,P1),
       money:"Carol "+fmt(-moved)+" · You "+fmt(moved)+" ("+(youPnL>=0?"profit ":"loss ")+fmt(youPnL)+")", msg:step2msg },
-    { title:"Link 3 · Alice buys to close → Dave writes", right:{name:"Carol"}, oblig:{name:"Dave ("+daveRole3+")"}, oi:1,
+    { title:"Link 3 · Alice buys to close → Dave writes", right:{name:"Carol"}, oblig:{name:"Dave ("+daveRole3+")"}, oi:1, det:det(S1,P1,S1,P1),
       money:"Alice "+fmt(-moved)+" · Dave "+fmt(moved)+" (Alice "+fmt(-youPnL)+")", msg:step3msg },
-    { title:"Link 4 · Expiration: Carol exercises → Dave assigned", right:{name:"Carol (exercises @ $"+K+")"}, oblig:{name:obligName}, oi:0,
+    { title:"Link 4 · Expiration: Carol exercises → Dave assigned", right:{name:"Carol (exercises @ $"+K+")"}, oblig:{name:obligName}, oi:0, det:det(S1,P1,S1,P1),
       money:money4, msg:step4msg }
   ];
 }
-const cK=$("cK"), cP0=$("cP0"), cS1=$("cS1"), cCost=$("cCost"), cCostBox=$("cCostBox");
+const cK=$("cK"), cS0=$("cS0"), cP0=$("cP0"), cS1=$("cS1"), cCost=$("cCost"), cCostBox=$("cCostBox");
 let chainInstr="call", chainCov="naked", steps=[], stepIdx=0;
 function renderChain(){
   let rows="";
   for(let i=1;i<=stepIdx;i++){
-    const s=steps[i], latest=(i===stepIdx);
+    const s=steps[i], latest=(i===stepIdx), d=s.det;
     rows += '<div class="ledger-row'+(latest?' latest':'')+'">'+
-      '<div class="lr-num">'+i+'</div><div>'+
-      '<div class="lr-title">'+s.title+'</div>'+
-      (s.money?'<div class="lr-money">'+s.money+'</div>':'')+
-      '<div class="lr-people">'+
-        '<span class="pill right">Right: '+(s.right?s.right.name:'—')+'</span>'+
-        '<span class="pill oblig">Obligation: '+(s.oblig?s.oblig.name:'—')+'</span>'+
-        '<span class="pill oi">Open interest: '+s.oi+'</span>'+
-      '</div></div></div>';
+      '<div class="lr-num">'+i+'</div>'+
+      '<div class="lr-main">'+
+        '<div class="lr-title">'+s.title+'</div>'+
+        (s.money?'<div class="lr-money">'+s.money+'</div>':'')+
+        '<div class="lr-people">'+
+          '<span class="pill right">Right: '+(s.right?s.right.name:'—')+'</span>'+
+          '<span class="pill oblig">Obligation: '+(s.oblig?s.oblig.name:'—')+'</span>'+
+          '<span class="pill oi">Open interest: '+s.oi+'</span>'+
+        '</div>'+
+      '</div>'+
+      (d?'<div class="lr-detail">'+
+        '<div><span class="dk">Strike</span> $'+d.K+'</div>'+
+        '<div><span class="dk">Open</span> $'+d.sOpen+' @ $'+d.pOpen+'/sh</div>'+
+        '<div><span class="dk">Close</span> $'+d.sClose+' @ $'+d.pClose+'/sh</div>'+
+      '</div>':'')+
+      '</div>';
   }
   $("ledger").innerHTML = rows ||
     '<div class="m" style="padding:8px 2px;font-size:13px">Click <b>Next step</b> to add the first row. Each click keeps the previous rows so you build the full history.</div>';
@@ -481,7 +495,7 @@ function renderChain(){
 function rebuildChain(keepStep){
   cCostBox.style.display = (chainCov==="covered") ? "flex" : "none";
   const prev=stepIdx;
-  steps=buildSteps(chainInstr, chainCov, +cK.value, +cP0.value, +cS1.value, +cCost.value);
+  steps=buildSteps(chainInstr, chainCov, +cK.value, +cS0.value, +cP0.value, +cS1.value, +cCost.value);
   stepIdx = keepStep ? Math.min(prev, steps.length-1) : 0;
   renderChain();
 }
@@ -493,8 +507,18 @@ document.querySelectorAll("#chainInstr .tg").forEach(b=> b.onclick=()=>{
 document.querySelectorAll("#chainCov .tg").forEach(b=> b.onclick=()=>{
   document.querySelectorAll("#chainCov .tg").forEach(x=>x.classList.remove("on"));
   b.classList.add("on"); chainCov=b.dataset.v; rebuildChain(false); });
-[cK,cP0,cS1,cCost].forEach(el=> el.addEventListener("input",()=>rebuildChain(true)));
-rebuildChain(false);
+[cK,cS0,cP0,cS1,cCost].forEach(el=> el.addEventListener("input",()=>rebuildChain(true)));
+// Panel 1 (payoff) drives Panel 2 (chain): strike, premium, expiration price, and call/put.
+function syncFromPayoff(){
+  cK.value = strikeEl.value;
+  cP0.value = premEl.value;
+  cS1.value = spotEl.value;
+  chainInstr = posEl.value.toLowerCase().includes("put") ? "put" : "call";
+  document.querySelectorAll("#chainInstr .tg").forEach(x=> x.classList.toggle("on", x.dataset.v===chainInstr));
+  rebuildChain(true);
+}
+[strikeEl, premEl, spotEl, posEl].forEach(el=> el.addEventListener("input", syncFromPayoff));
+syncFromPayoff();
 
 // ---------- Margin-call simulator ----------
 const mPos=$("mPos"), mK=$("mK"), mPrem=$("mPrem"), mN=$("mN"), mCash=$("mCash"), mSpot=$("mSpot");
