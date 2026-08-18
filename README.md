@@ -16,3 +16,5 @@ Numbers are simplified (they ignore time value, commissions, taxes etc).
 ## How to use
 
 Just open the live site (or `index.html`) in any modern browser — desktop or mobile. Drag the sliders, flip the toggles, and click **Next step**. That's it.
+
+Or navigate to the [gh page](https://slashroot79.github.io/options-visualizer/)
