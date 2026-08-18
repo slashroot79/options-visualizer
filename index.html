@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#0d1117" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="description" content="A free, beginner-friendly interactive tool to understand stock options: payoff diagrams, the clearinghouse (OCC) chain, margin calls, and the bid/ask/mid/last quote — all explained like you're five." />
+<title>Options, Explained Simply — Interactive Visualizer</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --panel2: #1c2230; --border: #30363d; --text: #e6edf3;
+    --muted: #8b949e; --green: #3fb950; --red: #f85149; --blue: #58a6ff;
+    --yellow: #d29922; --purple: #bc8cff; --accent: #7c9cff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: radial-gradient(1200px 600px at 50% -100px, #16233f 0%, var(--bg) 55%);
+    color: var(--text); line-height: 1.55;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    padding: 20px;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; }
+  /* Hero */
+  .hero { text-align: center; padding: 18px 10px 6px; }
+  .hero h1 { font-size: 30px; margin: 0 0 6px; letter-spacing: -.5px;
+    background: linear-gradient(90deg,#8fb4ff,#bc8cff); -webkit-background-clip: text;
+    background-clip: text; color: transparent; }
+  .hero p { color: var(--muted); font-size: 15px; margin: 0 auto; max-width: 640px; }
+  .pillrow { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin:14px 0 4px; }
+  .chip { font-size:12px; color:var(--muted); background:var(--panel); border:1px solid var(--border);
+    padding:5px 11px; border-radius:999px; }
+  /* Panels */
+  h2 { font-size: 18px; margin: 0 0 4px; }
+  .lead { color: var(--muted); font-size: 13.5px; margin: 0 0 14px; }
+  .panel { background: var(--panel); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px; margin: 18px 0;
+    box-shadow: 0 1px 0 rgba(255,255,255,.02) inset, 0 8px 24px rgba(0,0,0,.25); }
+  .num { display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px;
+    border-radius:8px; background:linear-gradient(160deg,#2a3550,#1b2233); border:1px solid var(--border);
+    color:var(--accent); font-weight:700; font-size:14px; margin-right:9px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; }
+  .ctrl { display: flex; flex-direction: column; gap: 4px; }
+  .ctrl label { font-size: 12px; color: var(--muted); }
+  .ctrl input, .ctrl select {
+    background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 10px; font-size: 14px; min-width: 130px; }
+  input[type="range"] { min-width: 240px; padding: 0; accent-color: var(--purple); }
+  input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  canvas { width: 100%; height: auto; display: block; margin-top: 12px;
+    background: #0a0e14; border-radius: 10px; border: 1px solid var(--border); }
+  .legend { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .legend span { margin-right: 14px; white-space: nowrap; }
+  .stats { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .stat { background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+    padding: 9px 13px; font-size: 12.5px; min-width: 130px; flex: 1 1 130px; }
+  .stat b { display: block; font-size: 16px; margin-top: 2px; }
+  .g{color:var(--green)}.r{color:var(--red)}.b{color:var(--blue)}.y{color:var(--yellow)}
+  .p{color:var(--purple)}.m{color:var(--muted)}
+  .desc { margin-top: 12px; padding: 11px 13px; background: var(--panel2);
+    border: 1px solid var(--border); border-left: 3px solid var(--accent);
+    border-radius: 8px; font-size: 13.5px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  /* Toggles */
+  .toggle { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+  .tg { background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 13px; font-size: 13px; font-weight: 500; cursor: pointer; }
+  .tg.on { background: var(--blue); color: #041021; border-color: var(--blue); font-weight: 700; }
+  /* Buttons */
+  button { background: var(--blue); color: #041021; border: none; border-radius: 8px;
+    padding: 10px 17px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  button.ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  button:disabled { opacity: .4; cursor: default; }
+  .btns { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  /* OCC banner + ledger */
+  .occ-banner { display:flex; gap:12px; align-items:center; background:linear-gradient(160deg,#1f2937,#131a29);
+    border:1px solid var(--blue); border-radius:12px; padding:12px 15px; margin:14px 0; font-size:13.5px; }
+  .occ-banner .k { font-size:26px; }
+  .ledger { display:flex; flex-direction:column; gap:8px; margin-top:4px; }
+  .ledger-row { display:flex; gap:12px; align-items:flex-start; background:var(--bg);
+    border:1px solid var(--border); border-radius:10px; padding:11px 13px; animation: pop .25s ease; }
+  .ledger-row.latest { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; background:var(--panel2); }
+  @keyframes pop { from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none} }
+  .lr-num { flex:none; width:24px; height:24px; border-radius:7px; background:#22304d; color:var(--accent);
+    font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .lr-title { font-weight:600; font-size:13.5px; }
+  .lr-money { color:var(--muted); font-size:12px; margin-top:2px; }
+  .lr-people { display:flex; gap:7px; flex-wrap:wrap; margin-top:7px; }
+  .pill { font-size:11.5px; padding:3px 9px; border-radius:999px; border:1px solid var(--border); }
+  .pill.right { color:var(--green); border-color:#1f5c33; background:#0f2417; }
+  .pill.oblig { color:var(--red); border-color:#5c2626; background:#25110f; }
+  .pill.oi { color:var(--muted); }
+  .msg { margin-top: 14px; padding: 13px; background: var(--bg); border-left: 3px solid var(--blue);
+    border-radius: 8px; font-size: 14px; min-height: 46px; }
+  /* Tables */
+  table { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 8px; }
+  th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--bg); color: var(--muted); }
+  .callout { margin-top:14px; padding:13px 15px; border-radius:10px; font-size:13.5px;
+    background:#2a1d10; border:1px solid #6b4a17; }
+  .callout b { color:#f0b429; }
+  /* Quote widget */
+  .quote { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+  .qbox { flex:1 1 120px; text-align:center; background:var(--bg); border:1px solid var(--border);
+    border-radius:10px; padding:12px; }
+  .qbox .lbl { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+  .qbox .val { font-size:20px; font-weight:700; margin-top:3px; }
+  /* Glossary */
+  details { background:var(--bg); border:1px solid var(--border); border-radius:10px;
+    padding:10px 14px; margin:8px 0; }
+  details summary { cursor:pointer; font-weight:600; font-size:14px; }
+  details p, details ul { font-size:13.5px; color:var(--text); }
+  footer { text-align:center; color:var(--muted); font-size:12.5px; margin:28px 0 10px; }
+  footer .disc { background:var(--panel); border:1px solid var(--border); border-radius:10px;
+    padding:12px 16px; max-width:720px; margin:0 auto 12px; }
+  a { color: var(--accent); }
+  @media (max-width: 640px) {
+    body { padding: 12px; }
+    .hero h1 { font-size: 24px; }
+    h2 { font-size: 16px; }
+    input[type="range"] { min-width: 0; width: 100%; }
+    .ctrl { width: 100%; } .ctrl input, .ctrl select { min-width: 0; width: 100%; }
+    .stat { min-width: 46%; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <h1>Options, Explained Simply</h1>
+    <p>An interactive playground to <em>finally</em> understand stock options — payoffs, who's on the other side of your trade, margin calls, and how prices are quoted. No jargon. Drag things and watch.</p>
+    <div class="pillrow">
+      <span class="chip">🎢 Payoff diagrams</span>
+      <span class="chip">🧥 The clearinghouse chain</span>
+      <span class="chip">🔔 Margin-call simulator</span>
+      <span class="chip">💬 Bid / Ask / Mid / Last</span>
+    </div>
+  </div>
+
+  <!-- ===================== PAYOFF ===================== -->
+  <div class="panel">
+    <h2><span class="num">1</span>Payoff at expiration</h2>
+    <p class="lead">Pick a position and drag the stock price. Green = you profit, red = you lose. This is the single most useful picture in options.</p>
+    <div class="controls">
+      <div class="ctrl">
+        <label>Position</label>
+        <select id="pos">
+          <option value="longCall">Buy call (long call)</option>
+          <option value="shortCall">Sell call (short call · naked)</option>
+          <option value="coveredCall">Covered call (own stock + short call)</option>
+          <option value="longPut">Buy put (long put)</option>
+          <option value="shortPut">Sell put (short put)</option>
+        </select>
+      </div>
+      <div class="ctrl"><label>Strike (K)</label><input id="strike" type="number" value="105" step="1" /></div>
+      <div class="ctrl"><label>Premium ($/share)</label><input id="prem" type="number" value="2" step="0.25" /></div>
+      <div class="ctrl" id="buyBox" style="display:none">
+        <label>Your stock cost ($/share)</label><input id="buyPrice" type="number" value="100" step="1" />
+      </div>
+    </div>
+    <div class="desc" id="posDesc"></div>
+    <div class="ctrl" style="margin-top:14px">
+      <label>Stock price at expiration: <b id="spotLbl" class="b" style="display:inline">$115</b>
+        &nbsp; <span id="moneyBadge" class="badge"></span></label>
+      <input id="spot" type="range" min="0" max="200" value="115" step="1" />
+    </div>
+    <canvas id="chart" width="920" height="360"></canvas>
+    <div class="legend">
+      <span>🟩 profit zone</span><span>🟥 loss zone</span>
+      <span style="color:var(--blue)">▮ strike</span>
+      <span style="color:var(--yellow)">▮ breakeven</span>
+      <span style="color:var(--purple)">▮ your stock price</span>
+    </div>
+    <div class="stats" id="stats"></div>
+  </div>
+
+  <!-- ===================== CLEARINGHOUSE ===================== -->
+  <div class="panel">
+    <h2><span class="num">2</span>Who's on the other side? The clearinghouse chain</h2>
+    <p class="lead">Every option has a <b>right</b>-holder and an <b>obligation</b>-holder. Click <b>Next step</b> — each click <b>adds a row</b> so you can watch the contract change hands from start to finish. Nobody is chained to a specific person; the OCC sits in the middle.</p>
+
+    <div class="controls">
+      <div class="ctrl">
+        <label>Contract type</label>
+        <div class="toggle" id="chainInstr">
+          <button class="tg on" data-v="call">📈 Call chain</button>
+          <button class="tg" data-v="put">📉 Put chain</button>
+        </div>
+      </div>
+      <div class="ctrl">
+        <label>Final writer (Dave) is…</label>
+        <div class="toggle" id="chainCov">
+          <button class="tg on" data-v="naked">😬 Naked</button>
+          <button class="tg" data-v="covered">🛡️ Covered / cash-secured</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="occ-banner">
+      <span class="k">🧥</span>
+      <span><b>OCC — the clearinghouse</b> sits between every buyer &amp; seller in every row below and <b>guarantees</b> the trade. It does <b>not</b> set prices — it just clears &amp; settles. Think coat-check, not shopkeeper.</span>
+    </div>
+
+    <div class="ledger" id="ledger"></div>
+    <div class="msg" id="chainMsg"></div>
+    <div class="btns">
+      <button id="nextBtn">Next step ▶</button>
+      <button id="resetBtn" class="ghost">↺ Reset</button>
+      <span class="m" style="align-self:center;font-size:12px">Open interest (live contracts): <b id="oi" class="b" style="display:inline">0</b></span>
+    </div>
+  </div>
+
+  <!-- ===================== MARGIN CALL SIM ===================== -->
+  <div class="panel">
+    <h2><span class="num">3</span>Margin-call simulator</h2>
+    <p class="lead">This is how a naked seller "ends up paying up." Pick a naked short, then drag the stock <b>against</b> yourself and watch the danger stages light up.</p>
+    <div class="controls">
+      <div class="ctrl">
+        <label>Naked position</label>
+        <select id="mPos">
+          <option value="shortCall">Sell call (naked short call)</option>
+          <option value="shortPut">Sell put (naked short put)</option>
+        </select>
+      </div>
+      <div class="ctrl"><label>Strike (K)</label><input id="mK" type="number" value="105" step="1"/></div>
+      <div class="ctrl"><label>Premium ($/sh)</label><input id="mPrem" type="number" value="2" step="0.25"/></div>
+      <div class="ctrl"><label>Contracts</label><input id="mN" type="number" value="1" min="1" step="1"/></div>
+      <div class="ctrl"><label>Account cash ($)</label><input id="mCash" type="number" value="3000" step="100"/></div>
+    </div>
+    <div class="ctrl" style="margin-top:14px">
+      <label>Current stock price: <b id="mSpotLbl" class="b" style="display:inline">$105</b>
+        &nbsp; <span id="mMoney" class="badge"></span></label>
+      <input id="mSpot" type="range" min="0" max="220" value="105" step="1"/>
+    </div>
+    <div id="mBanner" style="margin-top:14px;padding:14px;border-radius:10px;font-weight:600"></div>
+    <div class="stats" id="mStats"></div>
+    <div id="mCascade" style="margin-top:14px"></div>
+    <h3 style="font-size:14px;margin:18px 0 6px" class="m">The types of margin call (stages of "pay up")</h3>
+    <table>
+      <tr><th>Stage</th><th>What it means (ELI5)</th><th>What you must do</th></tr>
+      <tr><td class="b"><b>1 · Initial (Reg-T / Fed call)</b></td><td>You didn't post enough collateral to even OPEN the naked short.</td><td>Add cash before the trade is allowed.</td></tr>
+      <tr><td class="y"><b>2 · Maintenance (house call)</b></td><td>Position moved against you; equity fell under the broker's minimum.</td><td>Deposit the deficiency <b>now</b>, or the broker closes you.</td></tr>
+      <tr><td class="r"><b>3 · Forced liquidation</b></td><td>You didn't/couldn't add cash → broker buys-to-close or assigns you at bad prices.</td><td>Nothing — the broker acts <b>for</b> you. Loss locked in.</td></tr>
+      <tr><td style="color:#ff7b72"><b>4 · Debit balance (you owe)</b></td><td>Losses blew past all your cash. Account goes negative.</td><td>You <b>owe the broker</b> the shortfall — a real debt.</td></tr>
+    </table>
+    <div class="legend">Simplified: uses intrinsic value only (ignores time value) and Reg-T naked margin ≈ current value + max(20% × stock − OTM amount, 10% floor). Real brokers vary.</div>
+  </div>
+
+  <!-- ===================== BID/ASK ===================== -->
+  <div class="panel">
+    <h2><span class="num">4</span>The quote: Bid / Ask / Mid / Last</h2>
+    <p class="lead">These four numbers describe the <b>price</b> of an option right now. Type a bid and ask to see how mid and spread are built.</p>
+
+    <div class="controls">
+      <div class="ctrl"><label>Bid ($)</label><input id="qBid" type="number" value="1.95" step="0.05"/></div>
+      <div class="ctrl"><label>Ask ($)</label><input id="qAsk" type="number" value="2.05" step="0.05"/></div>
+    </div>
+    <div class="quote">
+      <div class="qbox"><div class="lbl r">Bid</div><div class="val r" id="qBidV">$1.95</div><div class="m" style="font-size:11px">you SELL here ▼</div></div>
+      <div class="qbox"><div class="lbl y">Mid</div><div class="val y" id="qMidV">$2.00</div><div class="m" style="font-size:11px">aim your limit here</div></div>
+      <div class="qbox"><div class="lbl g">Ask</div><div class="val g" id="qAskV">$2.05</div><div class="m" style="font-size:11px">you BUY here ▲</div></div>
+      <div class="qbox"><div class="lbl p">Spread</div><div class="val p" id="qSprV">$0.10</div><div class="m" style="font-size:11px" id="qSprNote">tight = liquid</div></div>
+    </div>
+
+    <table style="margin-top:16px">
+      <tr><th>Term</th><th>ELI5</th></tr>
+      <tr><td class="r"><b>Bid</b></td><td>The best price a <b>buyer</b> is willing to <b>pay</b> right now → what <b>you</b> get if you <b>sell</b> immediately.</td></tr>
+      <tr><td class="g"><b>Ask</b> (offer)</td><td>The lowest price a <b>seller</b> will <b>accept</b> right now → what <b>you</b> pay if you <b>buy</b> immediately.</td></tr>
+      <tr><td class="y"><b>Mid</b></td><td>Halfway between bid &amp; ask <code>(bid+ask)/2</code>. The "fair-ish" price — aim your limit order here.</td></tr>
+      <tr><td class="b"><b>Last</b></td><td>The price of the most recent <b>actual trade</b>. Can be stale if nobody's traded it in a while.</td></tr>
+      <tr><td class="p"><b>Spread</b></td><td>Ask − Bid. Narrow = liquid &amp; cheap to trade. Wide = illiquid &amp; you lose money just entering/exiting.</td></tr>
+    </table>
+
+    <div class="callout">
+      ❗ <b>Common myth — busted:</b> the <b>OCC does NOT set the bid or ask</b>, and it doesn't "buy at the bid" or "sell at the ask." Those prices come from the <b>market</b>: real buyers, sellers, and <b>market makers</b> posting orders on the exchange. <b>Bid = the crowd of buyers. Ask = the crowd of sellers.</b> The OCC only steps in <em>after</em> two sides agree on a price, to <b>clear and guarantee</b> the trade. Prices = the market. Guarantee = the OCC.
+    </div>
+  </div>
+
+  <!-- ===================== GLOSSARY ===================== -->
+  <div class="panel">
+    <h2><span class="num">★</span>Quick glossary (tap to expand)</h2>
+    <details><summary>Call vs Put</summary>
+      <p><b>Call</b> = the right to <b>buy</b> at the strike (bullish 📈). <b>Put</b> = the right to <b>sell</b> at the strike (bearish 📉).</p></details>
+    <details><summary>Buy (long) vs Sell (short / write)</summary>
+      <p><b>Buy</b> = pay a premium, get a <b>right</b>, risk limited to what you paid. <b>Sell/Write</b> = collect a premium, take on an <b>obligation</b>, risk can be large. "Sell to open" creates the obligation; "sell to close" just exits a long you already own.</p></details>
+    <details><summary>ITM / ATM / OTM (moneyness)</summary>
+      <p><b>ITM</b> (in the money): a call with stock <b>above</b> the strike, or a put with stock <b>below</b> it — has real exercise value. <b>ATM</b>: stock ≈ strike. <b>OTM</b>: no exercise value yet.</p></details>
+    <details><summary>Premium, Strike, Expiration, Assignment</summary>
+      <p><b>Premium</b> = the option's price (× 100 = dollars, since 1 contract = 100 shares). <b>Strike</b> = the agreed price. <b>Expiration</b> = when the contract dies. <b>Assignment</b> = when a seller is forced to fulfill the obligation because a buyer exercised.</p></details>
+    <details><summary>Covered vs Naked</summary>
+      <p><b>Covered</b> = you hold the offsetting stock/cash, so assignment is painless. <b>Naked</b> = you don't — assignment forces you to buy/sell at market, which can be very costly (see the margin simulator).</p></details>
+  </div>
+
+  <footer>
+    <div class="disc">
+      ⚠️ <b>Educational tool only — not financial advice.</b> Options involve substantial risk and can lose money quickly. Numbers here are simplified for teaching (e.g., they ignore time value, commissions, taxes, and exact broker margin rules). Always verify with your broker and do your own research before trading.
+    </div>
+    <div>Built to make options click. Runs 100% in your browser — no data leaves your device.</div>
+  </footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+function fmt(v){ return (typeof v==="string") ? v : (v>=0?"+":"−")+"$"+Math.abs(v).toFixed(0); }
+function stat(label,val,cls){ return '<div class="stat">'+label+'<b class="'+cls+'">'+val+'</b></div>'; }
+
+// ---------- Payoff ----------
+const posEl=$("pos"), strikeEl=$("strike"), premEl=$("prem"), buyEl=$("buyPrice"),
+      spotEl=$("spot"), buyBox=$("buyBox"), canvas=$("chart"), ctx=canvas.getContext("2d");
+const posDesc = {
+  longCall:"<b>Buy call (long call).</b> You PAY a premium for the RIGHT to BUY 100 shares at the strike. Bullish — you profit if the stock rises well above the strike. Max loss = the premium.",
+  shortCall:"<b>Sell call (naked short call).</b> You COLLECT a premium and take the OBLIGATION to SELL at the strike if assigned. You want the stock to stay below the strike. ⚠️ Naked = unlimited risk.",
+  coveredCall:"<b>Covered call.</b> You own 100 shares AND sell a call against them. You keep the premium; if assigned you sell your shares at the strike. Trades away big upside for steady income.",
+  longPut:"<b>Buy put (long put).</b> You PAY a premium for the RIGHT to SELL 100 shares at the strike. Bearish — you profit if the stock falls well below the strike. Max loss = the premium.",
+  shortPut:"<b>Sell put (short put).</b> You COLLECT a premium and take the OBLIGATION to BUY at the strike if assigned. You want the stock to stay above the strike. Often used to buy stock at a discount."
+};
+function pnlPerShare(type, S, K, prem, buy){
+  const call=Math.max(S-K,0), put=Math.max(K-S,0);
+  switch(type){
+    case "longCall": return call - prem;
+    case "shortCall": return prem - call;
+    case "longPut": return put - prem;
+    case "shortPut": return prem - put;
+    case "coveredCall": return (S-buy) + prem - call;
+  }
+}
+function meta(type, K, prem, buy){
+  switch(type){
+    case "longCall": return {be:[K+prem], maxP:"Unlimited", maxL:-(prem*100)};
+    case "shortCall": return {be:[K+prem], maxP:prem*100, maxL:"Unlimited (naked)"};
+    case "longPut": return {be:[K-prem], maxP:(K-prem)*100, maxL:-(prem*100)};
+    case "shortPut": return {be:[K-prem], maxP:prem*100, maxL:-((K-prem)*100)};
+    case "coveredCall": return {be:[buy-prem], maxP:(K-buy+prem)*100, maxL:-((buy-prem)*100)};
+  }
+}
+function moneyness(type, S, K){
+  const isCall=type.toLowerCase().includes("call");
+  let d=isCall ? S-K : K-S;
+  if(Math.abs(S-K)<0.5) return {t:"ATM", c:"#d29922"};
+  if(d>0) return {t:"ITM", c:"#3fb950"};
+  return {t:"OTM", c:"#f85149"};
+}
+function draw(){
+  const type=posEl.value, K=+strikeEl.value, prem=+premEl.value, buy=+buyEl.value, spot=+spotEl.value;
+  buyBox.style.display = (type==="coveredCall") ? "flex" : "none";
+  $("posDesc").innerHTML = posDesc[type];
+
+  const W=canvas.width, H=canvas.height, padL=54, padR=20, padT=18, padB=34;
+  const Smax=Math.max(2*K, spot*1.3, 20);
+  const N=240, xs=[], ys=[];
+  for(let i=0;i<=N;i++){ const S=Smax*i/N; xs.push(S); ys.push(pnlPerShare(type,S,K,prem,buy)*100); }
+  let ymin=Math.min(...ys), ymax=Math.max(...ys);
+  if(ymax===ymin){ymax+=100;ymin-=100;}
+  const pad=(ymax-ymin)*0.12; ymin-=pad; ymax+=pad;
+  const X=S=> padL + (S/Smax)*(W-padL-padR);
+  const Y=v=> padT + (1-(v-ymin)/(ymax-ymin))*(H-padT-padB);
+
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle="#30363d"; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(padL,Y(0)); ctx.lineTo(W-padR,Y(0)); ctx.stroke();
+  ctx.font="11px sans-serif"; ctx.textAlign="right";
+  for(let g=0; g<=4; g++){ const v=ymin+(ymax-ymin)*g/4, y=Y(v);
+    ctx.strokeStyle="#21262d"; ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(W-padR,y); ctx.stroke();
+    ctx.fillStyle="#8b949e"; ctx.fillText((v>=0?"+":"−")+"$"+Math.abs(v).toFixed(0), padL-6, y+3); }
+  ctx.textAlign="center";
+  for(let g=0; g<=5; g++){ const S=Smax*g/5; ctx.fillText("$"+S.toFixed(0), X(S), H-12); }
+
+  for(let i=0;i<N;i++){
+    ctx.beginPath(); ctx.moveTo(X(xs[i]),Y(0)); ctx.lineTo(X(xs[i]),Y(ys[i]));
+    ctx.lineTo(X(xs[i+1]),Y(ys[i+1])); ctx.lineTo(X(xs[i+1]),Y(0)); ctx.closePath();
+    ctx.fillStyle=((ys[i]+ys[i+1])/2>=0) ? "rgba(63,185,80,.16)" : "rgba(248,81,73,.16)"; ctx.fill();
+  }
+  ctx.beginPath(); ctx.lineWidth=2.4; ctx.strokeStyle="#e6edf3";
+  for(let i=0;i<=N;i++){ const x=X(xs[i]),y=Y(ys[i]); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }
+  ctx.stroke();
+
+  const m=meta(type,K,prem,buy);
+  const vline=(x,color,label)=>{ ctx.strokeStyle=color; ctx.setLineDash([4,4]); ctx.lineWidth=1.3;
+    ctx.beginPath(); ctx.moveTo(x,padT); ctx.lineTo(x,H-padB); ctx.stroke(); ctx.setLineDash([]);
+    if(label){ ctx.fillStyle=color; ctx.textAlign="left"; ctx.font="11px sans-serif"; ctx.fillText(label,x+3,padT+11);} };
+  vline(X(K),"#58a6ff","K "+K);
+  m.be.forEach(b=> vline(X(b),"#d29922","BE "+b.toFixed(1)));
+  vline(X(spot),"#bc8cff","");
+
+  const pnlNow=pnlPerShare(type,spot,K,prem,buy)*100, mn=moneyness(type,spot,K);
+  $("spotLbl").textContent="$"+spot;
+  const mb=$("moneyBadge"); mb.textContent=mn.t; mb.style.background=mn.c+"22"; mb.style.color=mn.c; mb.style.border="1px solid "+mn.c;
+  $("stats").innerHTML =
+    stat("P&amp;L at $"+spot, fmt(pnlNow), pnlNow>=0?"g":"r") +
+    stat("Breakeven", "$"+m.be.map(b=>b.toFixed(1)).join(" / "), "y") +
+    stat("Max profit", (typeof m.maxP==="string")?m.maxP:fmt(m.maxP), "g") +
+    stat("Max loss", (typeof m.maxL==="string")?m.maxL:fmt(m.maxL), "r") +
+    stat("1 contract", "= 100 sh · premium $"+(prem*100).toFixed(0), "m");
+}
+[posEl,strikeEl,premEl,buyEl,spotEl].forEach(el=> el.addEventListener("input",draw));
+draw();
+
+// ---------- Clearinghouse chain (accumulating ledger) ----------
+function buildSteps(instr, cov){
+  const isCall = instr==="call";
+  const dir = isCall ? "jumps to $115" : "drops to $85";
+  const exStrike = isCall ? 105 : 95;
+  const openMsg = isCall
+    ? "LINK 1 — Alice PRINTS a $105 CALL (sell to open). You BUY it (buy to open). 💵 You pay $200 → Alice gets $200. A call buyer is BULLISH (right to BUY at $105). The OCC records: You = right, Alice = obligation."
+    : "LINK 1 — Alice PRINTS a $95 PUT (sell to open). You BUY it (buy to open). 💵 You pay $200 → Alice gets $200. A put buyer is BEARISH (right to SELL at $95). The OCC records: You = right, Alice = obligation.";
+  const link2 = "LINK 2 — Stock "+dir+", so your ticket is worth ~$1,000. You SELL TO CLOSE; Carol BUYS TO OPEN. 💵 Carol pays $1,000 → you get $1,000 (profit +$800). You walk away. The RIGHT moved You→Carol; Alice's obligation never moved.";
+  const link3Role = cov==="covered"
+    ? (isCall ? "sold to open · OWNS 100 sh @ $100" : "sold to open · set aside $9,500 cash")
+    : "sold to open · NO shares, NO cash";
+  const link3 = "LINK 3 — Alice BUYS TO CLOSE; Dave SELLS TO OPEN (as "+(cov==="covered"?"a covered/cash-secured writer":"a NAKED writer")+"). 💵 Alice pays ~$1,000 → Dave gets ~$1,000 (Alice loss −$800). The OBLIGATION moved Alice→Dave. The contract is now Dave↔Carol — all-new people!";
+  let link4, money4;
+  if(isCall){
+    if(cov==="covered"){ link4="LINK 4 (ITM at $115) — Carol exercises → buys 100 sh at $105. The OCC randomly assigns Dave → he must SELL 100 sh at $105. He OWNS them (bought $100), so he just delivers: effective sale $116/sh → +$1,600 profit. Only 'cost' is capped upside. ✅ No margin call."; money4="Dave delivers shares · net +$1,600"; }
+    else { link4="LINK 4 (ITM at $115) — Carol exercises → buys 100 sh at $105. The OCC randomly assigns Dave → he must SELL 100 sh he doesn't own: BUYS at $115, sells at $105 = −$1,000 (offset by premium). Higher stock = UNLIMITED loss → margin-call territory. ⚠️"; money4="Dave −$1,000+ (unlimited risk)"; }
+  } else {
+    if(cov==="covered"){ link4="LINK 4 (ITM at $85) — Carol exercises → sells 100 sh at $95. The OCC randomly assigns Dave → he must BUY 100 sh at $95. He set aside $9,500 cash, so he buys: now owns stock worth $8,500, cushioned by premium — and he wanted the shares. ✅ No margin call."; money4="Dave buys shares (cash-secured)"; }
+    else { link4="LINK 4 (ITM at $85) — Carol exercises → sells 100 sh at $95. The OCC randomly assigns Dave → he must BUY 100 sh at $95 (worth only $85) with money he doesn't have = −$1,000 instantly, worse as it falls (max loss if it hits $0). ⚠️ Margin-call territory."; money4="Dave −$1,000+ (down to $0 max)"; }
+  }
+  return [
+    { title:"Before any trade", right:null, oblig:null, oi:0, money:"",
+      msg:"Ready. No contract exists yet. The OCC (clearinghouse) will sit between every buyer and seller and GUARANTEE the trade — so nobody depends on a specific person. Click Next step." },
+    { title:"Link 1 · Alice writes → You buy", right:{name:"You"}, oblig:{name:"Alice"}, oi:1,
+      money:"You −$200 · Alice +$200", msg:openMsg },
+    { title:"Link 2 · You sell to close → Carol buys", right:{name:"Carol"}, oblig:{name:"Alice"}, oi:1,
+      money:"Carol −$1,000 · You +$1,000 (profit +$800)", msg:link2 },
+    { title:"Link 3 · Alice buys to close → Dave writes", right:{name:"Carol"}, oblig:{name:"Dave ("+link3Role+")"}, oi:1,
+      money:"Alice −$1,000 · Dave +$1,000 (Alice −$800)", msg:link3 },
+    { title:"Link 4 · Expiration: Carol exercises → Dave assigned", right:{name:"Carol (exercises @ $"+exStrike+")"}, oblig:{name:"Dave (assigned · "+(cov==="covered"?"covered ✅":"naked ⚠️")+")"}, oi:0,
+      money:money4, msg:link4 }
+  ];
+}
+let chainInstr="call", chainCov="naked", steps=buildSteps(chainInstr,chainCov), stepIdx=0;
+function renderChain(){
+  let rows="";
+  for(let i=1;i<=stepIdx;i++){
+    const s=steps[i], latest=(i===stepIdx);
+    rows += '<div class="ledger-row'+(latest?' latest':'')+'">'+
+      '<div class="lr-num">'+i+'</div><div>'+
+      '<div class="lr-title">'+s.title+'</div>'+
+      (s.money?'<div class="lr-money">💵 '+s.money+'</div>':'')+
+      '<div class="lr-people">'+
+        '<span class="pill right">🟢 Right: '+(s.right?s.right.name:'—')+'</span>'+
+        '<span class="pill oblig">🔴 Obligation: '+(s.oblig?s.oblig.name:'—')+'</span>'+
+        '<span class="pill oi">Open interest: '+s.oi+'</span>'+
+      '</div></div></div>';
+  }
+  $("ledger").innerHTML = rows ||
+    '<div class="m" style="padding:8px 2px;font-size:13px">Click <b>Next step</b> to add the first row. Each click keeps the previous rows so you build the full history.</div>';
+  $("chainMsg").innerHTML = steps[stepIdx].msg;
+  $("oi").textContent = steps[stepIdx].oi;
+  $("nextBtn").disabled = stepIdx>=steps.length-1;
+}
+function rebuildChain(){ steps=buildSteps(chainInstr,chainCov); stepIdx=0; renderChain(); }
+$("nextBtn").onclick=()=>{ if(stepIdx<steps.length-1){stepIdx++; renderChain();} };
+$("resetBtn").onclick=()=>{ stepIdx=0; renderChain(); };
+document.querySelectorAll("#chainInstr .tg").forEach(b=> b.onclick=()=>{
+  document.querySelectorAll("#chainInstr .tg").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on"); chainInstr=b.dataset.v; rebuildChain(); });
+document.querySelectorAll("#chainCov .tg").forEach(b=> b.onclick=()=>{
+  document.querySelectorAll("#chainCov .tg").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on"); chainCov=b.dataset.v; rebuildChain(); });
+renderChain();
+
+// ---------- Margin-call simulator ----------
+const mPos=$("mPos"), mK=$("mK"), mPrem=$("mPrem"), mN=$("mN"), mCash=$("mCash"), mSpot=$("mSpot");
+function marginReqPerShare(type,S,K){
+  const curVal = type==="shortCall" ? Math.max(S-K,0) : Math.max(K-S,0);
+  const otm    = type==="shortCall" ? Math.max(K-S,0) : Math.max(S-K,0);
+  const floor  = type==="shortCall" ? 0.10*S : 0.10*K;
+  return curVal + Math.max(0.20*S - otm, floor);
+}
+function drawMargin(){
+  const type=mPos.value, K=+mK.value, prem=+mPrem.value, n=Math.max(1,+mN.value), cash=+mCash.value, S=+mSpot.value;
+  const mult=100*n, premCollected=prem*mult;
+  const curVal=(type==="shortCall"?Math.max(S-K,0):Math.max(K-S,0));
+  const liability=curVal*mult, uPnL=premCollected-liability, nlv=cash+uPnL;
+  const req=marginReqPerShare(type,S,K)*mult, excess=nlv-req;
+  const itm=curVal>0;
+  const mm=Math.abs(S-K)<0.5?{t:"ATM",c:"#d29922"}:(itm?{t:"ITM (bad for you)",c:"#f85149"}:{t:"OTM (good)",c:"#3fb950"});
+  $("mSpotLbl").textContent="$"+S;
+  const mb=$("mMoney"); mb.textContent=mm.t; mb.style.background=mm.c+"22"; mb.style.color=mm.c; mb.style.border="1px solid "+mm.c;
+
+  let sev,color,text;
+  if(nlv<0){ sev=4; color="#8b0000"; text="💥 STAGE 4 · DEBIT BALANCE — Your loss blew past all your cash. Equity is <b>"+fmt(nlv)+"</b>. Even after the broker liquidates, you still <b>OWE "+fmt(-nlv)+"</b>. A real debt."; }
+  else if(excess<0){ sev=2; color="#b62324"; text="🔔 STAGE 2 · MARGIN CALL (maintenance) — Equity ("+fmt(nlv)+") fell below the requirement ("+fmt(req)+"). <b>Deposit "+fmt(-excess)+" now</b>, or the broker force-closes you (STAGE 3 liquidation) at these ugly prices."; }
+  else if(excess<0.5*req){ sev=1; color="#9e6a00"; text="⚠️ STAGE 1 · WARNING — Still OK, but the cushion is thin (excess "+fmt(excess)+" over a "+fmt(req)+" requirement). One more adverse move triggers a margin call."; }
+  else { sev=0; color="#1a7f37"; text="✅ HEALTHY — Equity "+fmt(nlv)+" comfortably covers the "+fmt(req)+" requirement (excess "+fmt(excess)+"). No margin call."; }
+  const ban=$("mBanner"); ban.style.background=color+"22"; ban.style.border="1px solid "+color; ban.style.color="#e6edf3"; ban.innerHTML=text;
+
+  $("mStats").innerHTML =
+    stat("Premium collected", fmt(premCollected), "g") +
+    stat("Liability (buy-back)", fmt(-liability), "r") +
+    stat("Unrealized P&amp;L", fmt(uPnL), uPnL>=0?"g":"r") +
+    stat("Net liq value (equity)", fmt(nlv), nlv>=0?"b":"r") +
+    stat("Margin requirement", fmt(req), "y") +
+    stat("Excess / (Deficiency)", fmt(excess), excess>=0?"g":"r");
+
+  const stages=["Healthy","Warning","Margin call","Liquidation","You owe (debt)"];
+  $("mCascade").innerHTML = stages.map((label,i)=>{
+    const on=i<=sev, col=i===0?"#3fb950":i===1?"#d29922":i<=3?"#f85149":"#8b0000";
+    return '<span class="badge" style="margin:0 8px 8px 0;background:'+(on?col+"33":"#161b22")+
+      ';color:'+(on?col:"#8b949e")+';border:1px solid '+(on?col:"#30363d")+'">'+(i+1)+' · '+label+'</span>';
+  }).join("");
+}
+[mPos,mK,mPrem,mN,mCash,mSpot].forEach(el=> el.addEventListener("input",drawMargin));
+drawMargin();
+
+// ---------- Quote widget ----------
+const qBid=$("qBid"), qAsk=$("qAsk");
+function drawQuote(){
+  let bid=+qBid.value, ask=+qAsk.value;
+  const mid=(bid+ask)/2, spr=ask-bid;
+  $("qBidV").textContent="$"+bid.toFixed(2);
+  $("qAskV").textContent="$"+ask.toFixed(2);
+  $("qMidV").textContent="$"+mid.toFixed(2);
+  $("qSprV").textContent=(spr<0?"−$":"$")+Math.abs(spr).toFixed(2);
+  $("qSprNote").textContent = spr<0 ? "bid > ask?! crossed" : spr<=0.10 ? "tight = liquid 👍" : spr<=0.50 ? "moderate" : "wide = illiquid ⚠️";
+}
+[qBid,qAsk].forEach(el=> el.addEventListener("input",drawQuote));
+drawQuote();
+</script>
+</body>
+</html>
