@@ -198,6 +198,13 @@
       </div>
     </div>
 
+    <div class="controls" style="margin-top:14px">
+      <div class="ctrl"><label>Strike (K)</label><input id="cK" type="number" value="105" step="1"/></div>
+      <div class="ctrl"><label>Premium paid ($/sh)</label><input id="cP0" type="number" value="2" step="0.25"/></div>
+      <div class="ctrl"><label>Stock at expiration</label><input id="cS1" type="number" value="115" step="1"/></div>
+      <div class="ctrl" id="cCostBox" style="display:none"><label>Dave's stock cost ($/sh)</label><input id="cCost" type="number" value="100" step="1"/></div>
+    </div>
+
     <div class="occ-banner">
       <span><b>OCC — the clearinghouse</b> sits between every buyer &amp; seller in every row below and <b>guarantees</b> the trade. It does <b>not</b> set prices — it just clears &amp; settles. Think coat-check, not shopkeeper.</span>
     </div>
@@ -382,51 +389,75 @@ function draw(){
   const pnlNow=pnlPerShare(type,spot,K,prem,buy)*100, mn=moneyness(type,spot,K);
   $("spotLbl").textContent="$"+spot;
   const mb=$("moneyBadge"); mb.textContent=mn.t; mb.style.background=mn.c+"22"; mb.style.color=mn.c; mb.style.border="1px solid "+mn.c;
+  const intrinsic = type.toLowerCase().includes("call") ? Math.max(spot-K,0) : Math.max(K-spot,0);
   $("stats").innerHTML =
     stat("P&amp;L at $"+spot, fmt(pnlNow), pnlNow>=0?"g":"r") +
+    stat("Value at exp. (intrinsic)", "$"+intrinsic.toFixed(2)+"/sh", "b") +
     stat("Breakeven", "$"+m.be.map(b=>b.toFixed(1)).join(" / "), "y") +
     stat("Max profit", (typeof m.maxP==="string")?m.maxP:fmt(m.maxP), "g") +
     stat("Max loss", (typeof m.maxL==="string")?m.maxL:fmt(m.maxL), "r") +
-    stat("1 contract", "= 100 sh · premium $"+(prem*100).toFixed(0), "m");
+    stat("Premium paid (entry)", "$"+prem.toFixed(2)+"/sh · $"+(prem*100).toFixed(0), "m");
 }
 [posEl,strikeEl,premEl,buyEl,spotEl].forEach(el=> el.addEventListener("input",draw));
 draw();
 
 // ---------- Clearinghouse chain (accumulating ledger) ----------
-function buildSteps(instr, cov){
+// All dollar figures below are computed from the strike (K), premium paid (P0),
+// and expiration stock price (S1) — using intrinsic value at expiration (no time value).
+function buildSteps(instr, cov, K, P0, S1, C){
   const isCall = instr==="call";
-  const dir = isCall ? "jumps to $115" : "drops to $85";
-  const exStrike = isCall ? 105 : 95;
-  const openMsg = isCall
-    ? "LINK 1 — Alice PRINTS a $105 CALL (sell to open). You BUY it (buy to open). You pay $200 → Alice gets $200. A call buyer is BULLISH (right to BUY at $105). The OCC records: You = right, Alice = obligation."
-    : "LINK 1 — Alice PRINTS a $95 PUT (sell to open). You BUY it (buy to open). You pay $200 → Alice gets $200. A put buyer is BEARISH (right to SELL at $95). The OCC records: You = right, Alice = obligation.";
-  const link2 = "LINK 2 — Stock "+dir+", so your ticket is worth ~$1,000. You SELL TO CLOSE; Carol BUYS TO OPEN. Carol pays $1,000 → you get $1,000 (profit +$800). You walk away. The RIGHT moved You→Carol; Alice's obligation never moved.";
-  const link3Role = cov==="covered"
-    ? (isCall ? "sold to open · OWNS 100 sh @ $100" : "sold to open · set aside $9,500 cash")
-    : "sold to open · NO shares, NO cash";
-  const link3 = "LINK 3 — Alice BUYS TO CLOSE; Dave SELLS TO OPEN (as "+(cov==="covered"?"a covered/cash-secured writer":"a NAKED writer")+"). Alice pays ~$1,000 → Dave gets ~$1,000 (Alice loss −$800). The OBLIGATION moved Alice→Dave. The contract is now Dave↔Carol — all-new people!";
-  let link4, money4;
-  if(isCall){
-    if(cov==="covered"){ link4="LINK 4 (ITM at $115) — Carol exercises → buys 100 sh at $105. The OCC randomly assigns Dave → he must SELL 100 sh at $105. He OWNS them (bought $100), so he just delivers: effective sale $116/sh → +$1,600 profit. Only 'cost' is capped upside. No margin call."; money4="Dave delivers shares · net +$1,600"; }
-    else { link4="LINK 4 (ITM at $115) — Carol exercises → buys 100 sh at $105. The OCC randomly assigns Dave → he must SELL 100 sh he doesn't own: BUYS at $115, sells at $105 = −$1,000 (offset by premium). Higher stock = UNLIMITED loss → margin-call territory."; money4="Dave −$1,000+ (unlimited risk)"; }
-  } else {
-    if(cov==="covered"){ link4="LINK 4 (ITM at $85) — Carol exercises → sells 100 sh at $95. The OCC randomly assigns Dave → he must BUY 100 sh at $95. He set aside $9,500 cash, so he buys: now owns stock worth $8,500, cushioned by premium — and he wanted the shares. No margin call."; money4="Dave buys shares (cash-secured)"; }
-    else { link4="LINK 4 (ITM at $85) — Carol exercises → sells 100 sh at $95. The OCC randomly assigns Dave → he must BUY 100 sh at $95 (worth only $85) with money he doesn't have = −$1,000 instantly, worse as it falls (max loss if it hits $0). Margin-call territory."; money4="Dave −$1,000+ (down to $0 max)"; }
+  const itm = isCall ? (S1 > K) : (S1 < K);
+  const usd = v => "$"+Math.round(v);
+  const optName = "$"+K+" "+(isCall?"CALL":"PUT");
+  if(!itm){
+    return [
+      { title:"Before any trade", right:null, oblig:null, oi:0, money:"",
+        msg:"Ready. Set the strike, premium, and expiration price above, then click Next step." },
+      { title:"Expires worthless (out of the money)", right:{name:"—"}, oblig:{name:"—"}, oi:0, money:"Option expires worthless",
+        msg:"At $"+S1+", the "+optName+" is OUT of the money, so it EXPIRES WORTHLESS — no exercise, no assignment. Whoever holds it loses the premium they paid; the writer keeps the premium. To watch the contract change hands and get exercised/assigned, set an IN-THE-MONEY expiration price: "+(isCall?"ABOVE":"BELOW")+" the $"+K+" strike." }
+    ];
   }
+  const P1 = isCall ? (S1-K) : (K-S1);          // option's intrinsic value at $S1
+  const entry = P0*100, moved = P1*100, youPnL = moved-entry;
+  const bias = isCall ? "BULLISH (right to BUY at $"+K+")" : "BEARISH (right to SELL at $"+K+")";
+  const step1msg = "LINK 1 — Alice PRINTS a "+optName+" (sell to open). You BUY it (buy to open). You pay "+usd(entry)+" → Alice gets "+usd(entry)+". A "+(isCall?"call":"put")+" buyer is "+bias+". The OCC records: You = right, Alice = obligation.";
+  const step2msg = "LINK 2 — Stock moves to $"+S1+", so the option is now worth "+usd(moved)+" (intrinsic). You SELL TO CLOSE; Carol BUYS TO OPEN. Carol pays "+usd(moved)+" → you get "+usd(moved)+" ("+(youPnL>=0?"profit ":"loss ")+fmt(youPnL)+"). The RIGHT moved You→Carol; Alice's obligation never moved.";
+  const step3msg = "LINK 3 — Alice BUYS TO CLOSE at "+usd(moved)+" (Alice "+fmt(-youPnL)+"); Dave SELLS TO OPEN as "+(cov==="covered"?"a covered/cash-secured writer":"a NAKED writer")+", collecting "+usd(moved)+". The OBLIGATION moved Alice→Dave. The contract is now Dave↔Carol — all-new people.";
+  let step4msg, money4, obligName;
+  if(isCall){
+    if(cov==="covered"){
+      const net=(S1-C)*100;
+      step4msg = "LINK 4 (ITM at $"+S1+") — Carol exercises → buys 100 sh at $"+K+". OCC randomly assigns Dave → he must SELL 100 sh at $"+K+". He OWNS them (bought $"+C+"), so he just delivers. Net for Dave = ($"+S1+"−$"+C+")×100 = "+fmt(net)+". His upside is capped above $"+S1+".";
+      money4 = "Dave delivers shares · net "+fmt(net); obligName = "Dave (assigned · covered)";
+    } else {
+      step4msg = "LINK 4 (ITM at $"+S1+") — Carol exercises → buys 100 sh at $"+K+". OCC randomly assigns Dave → he must SELL 100 sh he doesn't own: buys at $"+S1+", sells at $"+K+" = "+fmt(-moved)+" on the shares, but he COLLECTED "+usd(moved)+" premium when writing → about breakeven at $"+S1+". Danger: every $1 the stock sits ABOVE $"+S1+" is pure loss (unlimited).";
+      money4 = "Assignment ≈ breakeven at $"+S1+" · unlimited risk above"; obligName = "Dave (assigned · naked)";
+    }
+  } else {
+    if(cov==="covered"){
+      step4msg = "LINK 4 (ITM at $"+S1+") — Carol exercises → sells 100 sh at $"+K+". OCC randomly assigns Dave → he must BUY 100 sh at $"+K+". He set aside "+usd(K*100)+" cash, so he buys: now owns stock worth "+usd(S1*100)+", net cost ≈ $"+S1+"/sh (strike minus premium). He wanted the shares.";
+      money4 = "Dave buys shares (cash-secured) · cost ≈ $"+S1+"/sh"; obligName = "Dave (assigned · cash-secured)";
+    } else {
+      step4msg = "LINK 4 (ITM at $"+S1+") — Carol exercises → sells 100 sh at $"+K+". OCC randomly assigns Dave → he must BUY 100 sh at $"+K+" (worth only $"+S1+"): "+fmt(-moved)+" on the shares, but he COLLECTED "+usd(moved)+" premium → about breakeven at $"+S1+". Danger: every $1 the stock sits BELOW $"+S1+" adds loss (down to $0).";
+      money4 = "Assignment ≈ breakeven at $"+S1+" · loss grows as it falls"; obligName = "Dave (assigned · naked)";
+    }
+  }
+  const daveRole3 = cov==="covered" ? (isCall?"owns shares":"cash-secured") : "naked";
   return [
     { title:"Before any trade", right:null, oblig:null, oi:0, money:"",
-      msg:"Ready. No contract exists yet. The OCC (clearinghouse) will sit between every buyer and seller and GUARANTEE the trade — so nobody depends on a specific person. Click Next step." },
+      msg:"Ready. No contract exists yet. The OCC will sit between every buyer and seller and GUARANTEE the trade — so nobody depends on a specific person. Set the strike, premium, and expiration price above, then click Next step." },
     { title:"Link 1 · Alice writes → You buy", right:{name:"You"}, oblig:{name:"Alice"}, oi:1,
-      money:"You −$200 · Alice +$200", msg:openMsg },
+      money:"You "+fmt(-entry)+" · Alice "+fmt(entry), msg:step1msg },
     { title:"Link 2 · You sell to close → Carol buys", right:{name:"Carol"}, oblig:{name:"Alice"}, oi:1,
-      money:"Carol −$1,000 · You +$1,000 (profit +$800)", msg:link2 },
-    { title:"Link 3 · Alice buys to close → Dave writes", right:{name:"Carol"}, oblig:{name:"Dave ("+link3Role+")"}, oi:1,
-      money:"Alice −$1,000 · Dave +$1,000 (Alice −$800)", msg:link3 },
-    { title:"Link 4 · Expiration: Carol exercises → Dave assigned", right:{name:"Carol (exercises @ $"+exStrike+")"}, oblig:{name:"Dave (assigned · "+(cov==="covered"?"covered":"naked")+")"}, oi:0,
-      money:money4, msg:link4 }
+      money:"Carol "+fmt(-moved)+" · You "+fmt(moved)+" ("+(youPnL>=0?"profit ":"loss ")+fmt(youPnL)+")", msg:step2msg },
+    { title:"Link 3 · Alice buys to close → Dave writes", right:{name:"Carol"}, oblig:{name:"Dave ("+daveRole3+")"}, oi:1,
+      money:"Alice "+fmt(-moved)+" · Dave "+fmt(moved)+" (Alice "+fmt(-youPnL)+")", msg:step3msg },
+    { title:"Link 4 · Expiration: Carol exercises → Dave assigned", right:{name:"Carol (exercises @ $"+K+")"}, oblig:{name:obligName}, oi:0,
+      money:money4, msg:step4msg }
   ];
 }
-let chainInstr="call", chainCov="naked", steps=buildSteps(chainInstr,chainCov), stepIdx=0;
+const cK=$("cK"), cP0=$("cP0"), cS1=$("cS1"), cCost=$("cCost"), cCostBox=$("cCostBox");
+let chainInstr="call", chainCov="naked", steps=[], stepIdx=0;
 function renderChain(){
   let rows="";
   for(let i=1;i<=stepIdx;i++){
@@ -447,16 +478,23 @@ function renderChain(){
   $("oi").textContent = steps[stepIdx].oi;
   $("nextBtn").disabled = stepIdx>=steps.length-1;
 }
-function rebuildChain(){ steps=buildSteps(chainInstr,chainCov); stepIdx=0; renderChain(); }
+function rebuildChain(keepStep){
+  cCostBox.style.display = (chainCov==="covered") ? "flex" : "none";
+  const prev=stepIdx;
+  steps=buildSteps(chainInstr, chainCov, +cK.value, +cP0.value, +cS1.value, +cCost.value);
+  stepIdx = keepStep ? Math.min(prev, steps.length-1) : 0;
+  renderChain();
+}
 $("nextBtn").onclick=()=>{ if(stepIdx<steps.length-1){stepIdx++; renderChain();} };
 $("resetBtn").onclick=()=>{ stepIdx=0; renderChain(); };
 document.querySelectorAll("#chainInstr .tg").forEach(b=> b.onclick=()=>{
   document.querySelectorAll("#chainInstr .tg").forEach(x=>x.classList.remove("on"));
-  b.classList.add("on"); chainInstr=b.dataset.v; rebuildChain(); });
+  b.classList.add("on"); chainInstr=b.dataset.v; rebuildChain(false); });
 document.querySelectorAll("#chainCov .tg").forEach(b=> b.onclick=()=>{
   document.querySelectorAll("#chainCov .tg").forEach(x=>x.classList.remove("on"));
-  b.classList.add("on"); chainCov=b.dataset.v; rebuildChain(); });
-renderChain();
+  b.classList.add("on"); chainCov=b.dataset.v; rebuildChain(false); });
+[cK,cP0,cS1,cCost].forEach(el=> el.addEventListener("input",()=>rebuildChain(true)));
+rebuildChain(false);
 
 // ---------- Margin-call simulator ----------
 const mPos=$("mPos"), mK=$("mK"), mPrem=$("mPrem"), mN=$("mN"), mCash=$("mCash"), mSpot=$("mSpot");
