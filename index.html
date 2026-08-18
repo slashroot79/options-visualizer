@@ -35,7 +35,7 @@
   h2 { font-size: 18px; margin: 0 0 4px; }
   .lead { color: var(--muted); font-size: 13.5px; margin: 0 0 14px; }
   .panel { background: var(--panel); border: 1px solid var(--border);
-    border-radius: 14px; padding: 20px; margin: 18px 0;
+    border-radius: 14px; padding: 20px; margin: 36px 0;
     box-shadow: 0 1px 0 rgba(255,255,255,.02) inset, 0 8px 24px rgba(0,0,0,.25); }
   .num { display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px;
     border-radius:8px; background:linear-gradient(160deg,#2a3550,#1b2233); border:1px solid var(--border);
@@ -130,12 +130,12 @@
 
   <div class="hero">
     <h1>Options, Explained Simply</h1>
-    <p>An interactive playground to <em>finally</em> understand stock options — payoffs, who's on the other side of your trade, margin calls, and how prices are quoted. No jargon. Drag things and watch.</p>
+    <p>An interactive playground to understand stock options payoffs, who's on the other side of your trade, margin calls, and how prices are quoted. No jargon. Drag things and watch.</p>
     <div class="pillrow">
-      <span class="chip">🎢 Payoff diagrams</span>
-      <span class="chip">🧥 The clearinghouse chain</span>
-      <span class="chip">🔔 Margin-call simulator</span>
-      <span class="chip">💬 Bid / Ask / Mid / Last</span>
+      <span class="chip">Payoff diagrams</span>
+      <span class="chip">The clearinghouse chain</span>
+      <span class="chip">Margin-call simulator</span>
+      <span class="chip">Bid / Ask / Mid / Last</span>
     </div>
   </div>
 
@@ -168,7 +168,7 @@
     </div>
     <canvas id="chart" width="920" height="360"></canvas>
     <div class="legend">
-      <span>🟩 profit zone</span><span>🟥 loss zone</span>
+      <span style="color:var(--green)">▮ profit zone</span><span style="color:var(--red)">▮ loss zone</span>
       <span style="color:var(--blue)">▮ strike</span>
       <span style="color:var(--yellow)">▮ breakeven</span>
       <span style="color:var(--purple)">▮ your stock price</span>
@@ -185,21 +185,20 @@
       <div class="ctrl">
         <label>Contract type</label>
         <div class="toggle" id="chainInstr">
-          <button class="tg on" data-v="call">📈 Call chain</button>
-          <button class="tg" data-v="put">📉 Put chain</button>
+          <button class="tg on" data-v="call">Call chain</button>
+          <button class="tg" data-v="put">Put chain</button>
         </div>
       </div>
       <div class="ctrl">
         <label>Final writer (Dave) is…</label>
         <div class="toggle" id="chainCov">
-          <button class="tg on" data-v="naked">😬 Naked</button>
-          <button class="tg" data-v="covered">🛡️ Covered / cash-secured</button>
+          <button class="tg on" data-v="naked">Naked</button>
+          <button class="tg" data-v="covered">Covered / cash-secured</button>
         </div>
       </div>
     </div>
 
     <div class="occ-banner">
-      <span class="k">🧥</span>
       <span><b>OCC — the clearinghouse</b> sits between every buyer &amp; seller in every row below and <b>guarantees</b> the trade. It does <b>not</b> set prices — it just clears &amp; settles. Think coat-check, not shopkeeper.</span>
     </div>
 
@@ -272,17 +271,13 @@
       <tr><td class="b"><b>Last</b></td><td>The price of the most recent <b>actual trade</b>. Can be stale if nobody's traded it in a while.</td></tr>
       <tr><td class="p"><b>Spread</b></td><td>Ask − Bid. Narrow = liquid &amp; cheap to trade. Wide = illiquid &amp; you lose money just entering/exiting.</td></tr>
     </table>
-
-    <div class="callout">
-      ❗ <b>Common myth — busted:</b> the <b>OCC does NOT set the bid or ask</b>, and it doesn't "buy at the bid" or "sell at the ask." Those prices come from the <b>market</b>: real buyers, sellers, and <b>market makers</b> posting orders on the exchange. <b>Bid = the crowd of buyers. Ask = the crowd of sellers.</b> The OCC only steps in <em>after</em> two sides agree on a price, to <b>clear and guarantee</b> the trade. Prices = the market. Guarantee = the OCC.
-    </div>
   </div>
 
   <!-- ===================== GLOSSARY ===================== -->
   <div class="panel">
     <h2><span class="num">★</span>Quick glossary (tap to expand)</h2>
     <details><summary>Call vs Put</summary>
-      <p><b>Call</b> = the right to <b>buy</b> at the strike (bullish 📈). <b>Put</b> = the right to <b>sell</b> at the strike (bearish 📉).</p></details>
+      <p><b>Call</b> = the right to <b>buy</b> at the strike (bullish). <b>Put</b> = the right to <b>sell</b> at the strike (bearish).</p></details>
     <details><summary>Buy (long) vs Sell (short / write)</summary>
       <p><b>Buy</b> = pay a premium, get a <b>right</b>, risk limited to what you paid. <b>Sell/Write</b> = collect a premium, take on an <b>obligation</b>, risk can be large. "Sell to open" creates the obligation; "sell to close" just exits a long you already own.</p></details>
     <details><summary>ITM / ATM / OTM (moneyness)</summary>
@@ -295,7 +290,7 @@
 
   <footer>
     <div class="disc">
-      ⚠️ <b>Educational tool only — not financial advice.</b> Options involve substantial risk and can lose money quickly. Numbers here are simplified for teaching (e.g., they ignore time value, commissions, taxes, and exact broker margin rules). Always verify with your broker and do your own research before trading.
+      <b>Educational tool only — not financial advice.</b> Options involve substantial risk and can lose money quickly. Numbers here are simplified for teaching (e.g., they ignore time value, commissions, taxes, and exact broker margin rules). Always verify with your broker and do your own research before trading.
     </div>
     <div>Built to make options click. Runs 100% in your browser — no data leaves your device.</div>
   </footer>
@@ -311,7 +306,7 @@ const posEl=$("pos"), strikeEl=$("strike"), premEl=$("prem"), buyEl=$("buyPrice"
       spotEl=$("spot"), buyBox=$("buyBox"), canvas=$("chart"), ctx=canvas.getContext("2d");
 const posDesc = {
   longCall:"<b>Buy call (long call).</b> You PAY a premium for the RIGHT to BUY 100 shares at the strike. Bullish — you profit if the stock rises well above the strike. Max loss = the premium.",
-  shortCall:"<b>Sell call (naked short call).</b> You COLLECT a premium and take the OBLIGATION to SELL at the strike if assigned. You want the stock to stay below the strike. ⚠️ Naked = unlimited risk.",
+  shortCall:"<b>Sell call (naked short call).</b> You COLLECT a premium and take the OBLIGATION to SELL at the strike if assigned. You want the stock to stay below the strike. Naked = unlimited risk.",
   coveredCall:"<b>Covered call.</b> You own 100 shares AND sell a call against them. You keep the premium; if assigned you sell your shares at the strike. Trades away big upside for steady income.",
   longPut:"<b>Buy put (long put).</b> You PAY a premium for the RIGHT to SELL 100 shares at the strike. Bearish — you profit if the stock falls well below the strike. Max loss = the premium.",
   shortPut:"<b>Sell put (short put).</b> You COLLECT a premium and take the OBLIGATION to BUY at the strike if assigned. You want the stock to stay above the strike. Often used to buy stock at a discount."
@@ -403,20 +398,20 @@ function buildSteps(instr, cov){
   const dir = isCall ? "jumps to $115" : "drops to $85";
   const exStrike = isCall ? 105 : 95;
   const openMsg = isCall
-    ? "LINK 1 — Alice PRINTS a $105 CALL (sell to open). You BUY it (buy to open). 💵 You pay $200 → Alice gets $200. A call buyer is BULLISH (right to BUY at $105). The OCC records: You = right, Alice = obligation."
-    : "LINK 1 — Alice PRINTS a $95 PUT (sell to open). You BUY it (buy to open). 💵 You pay $200 → Alice gets $200. A put buyer is BEARISH (right to SELL at $95). The OCC records: You = right, Alice = obligation.";
-  const link2 = "LINK 2 — Stock "+dir+", so your ticket is worth ~$1,000. You SELL TO CLOSE; Carol BUYS TO OPEN. 💵 Carol pays $1,000 → you get $1,000 (profit +$800). You walk away. The RIGHT moved You→Carol; Alice's obligation never moved.";
+    ? "LINK 1 — Alice PRINTS a $105 CALL (sell to open). You BUY it (buy to open). You pay $200 → Alice gets $200. A call buyer is BULLISH (right to BUY at $105). The OCC records: You = right, Alice = obligation."
+    : "LINK 1 — Alice PRINTS a $95 PUT (sell to open). You BUY it (buy to open). You pay $200 → Alice gets $200. A put buyer is BEARISH (right to SELL at $95). The OCC records: You = right, Alice = obligation.";
+  const link2 = "LINK 2 — Stock "+dir+", so your ticket is worth ~$1,000. You SELL TO CLOSE; Carol BUYS TO OPEN. Carol pays $1,000 → you get $1,000 (profit +$800). You walk away. The RIGHT moved You→Carol; Alice's obligation never moved.";
   const link3Role = cov==="covered"
     ? (isCall ? "sold to open · OWNS 100 sh @ $100" : "sold to open · set aside $9,500 cash")
     : "sold to open · NO shares, NO cash";
-  const link3 = "LINK 3 — Alice BUYS TO CLOSE; Dave SELLS TO OPEN (as "+(cov==="covered"?"a covered/cash-secured writer":"a NAKED writer")+"). 💵 Alice pays ~$1,000 → Dave gets ~$1,000 (Alice loss −$800). The OBLIGATION moved Alice→Dave. The contract is now Dave↔Carol — all-new people!";
+  const link3 = "LINK 3 — Alice BUYS TO CLOSE; Dave SELLS TO OPEN (as "+(cov==="covered"?"a covered/cash-secured writer":"a NAKED writer")+"). Alice pays ~$1,000 → Dave gets ~$1,000 (Alice loss −$800). The OBLIGATION moved Alice→Dave. The contract is now Dave↔Carol — all-new people!";
   let link4, money4;
   if(isCall){
-    if(cov==="covered"){ link4="LINK 4 (ITM at $115) — Carol exercises → buys 100 sh at $105. The OCC randomly assigns Dave → he must SELL 100 sh at $105. He OWNS them (bought $100), so he just delivers: effective sale $116/sh → +$1,600 profit. Only 'cost' is capped upside. ✅ No margin call."; money4="Dave delivers shares · net +$1,600"; }
-    else { link4="LINK 4 (ITM at $115) — Carol exercises → buys 100 sh at $105. The OCC randomly assigns Dave → he must SELL 100 sh he doesn't own: BUYS at $115, sells at $105 = −$1,000 (offset by premium). Higher stock = UNLIMITED loss → margin-call territory. ⚠️"; money4="Dave −$1,000+ (unlimited risk)"; }
+    if(cov==="covered"){ link4="LINK 4 (ITM at $115) — Carol exercises → buys 100 sh at $105. The OCC randomly assigns Dave → he must SELL 100 sh at $105. He OWNS them (bought $100), so he just delivers: effective sale $116/sh → +$1,600 profit. Only 'cost' is capped upside. No margin call."; money4="Dave delivers shares · net +$1,600"; }
+    else { link4="LINK 4 (ITM at $115) — Carol exercises → buys 100 sh at $105. The OCC randomly assigns Dave → he must SELL 100 sh he doesn't own: BUYS at $115, sells at $105 = −$1,000 (offset by premium). Higher stock = UNLIMITED loss → margin-call territory."; money4="Dave −$1,000+ (unlimited risk)"; }
   } else {
-    if(cov==="covered"){ link4="LINK 4 (ITM at $85) — Carol exercises → sells 100 sh at $95. The OCC randomly assigns Dave → he must BUY 100 sh at $95. He set aside $9,500 cash, so he buys: now owns stock worth $8,500, cushioned by premium — and he wanted the shares. ✅ No margin call."; money4="Dave buys shares (cash-secured)"; }
-    else { link4="LINK 4 (ITM at $85) — Carol exercises → sells 100 sh at $95. The OCC randomly assigns Dave → he must BUY 100 sh at $95 (worth only $85) with money he doesn't have = −$1,000 instantly, worse as it falls (max loss if it hits $0). ⚠️ Margin-call territory."; money4="Dave −$1,000+ (down to $0 max)"; }
+    if(cov==="covered"){ link4="LINK 4 (ITM at $85) — Carol exercises → sells 100 sh at $95. The OCC randomly assigns Dave → he must BUY 100 sh at $95. He set aside $9,500 cash, so he buys: now owns stock worth $8,500, cushioned by premium — and he wanted the shares. No margin call."; money4="Dave buys shares (cash-secured)"; }
+    else { link4="LINK 4 (ITM at $85) — Carol exercises → sells 100 sh at $95. The OCC randomly assigns Dave → he must BUY 100 sh at $95 (worth only $85) with money he doesn't have = −$1,000 instantly, worse as it falls (max loss if it hits $0). Margin-call territory."; money4="Dave −$1,000+ (down to $0 max)"; }
   }
   return [
     { title:"Before any trade", right:null, oblig:null, oi:0, money:"",
@@ -427,7 +422,7 @@ function buildSteps(instr, cov){
       money:"Carol −$1,000 · You +$1,000 (profit +$800)", msg:link2 },
     { title:"Link 3 · Alice buys to close → Dave writes", right:{name:"Carol"}, oblig:{name:"Dave ("+link3Role+")"}, oi:1,
       money:"Alice −$1,000 · Dave +$1,000 (Alice −$800)", msg:link3 },
-    { title:"Link 4 · Expiration: Carol exercises → Dave assigned", right:{name:"Carol (exercises @ $"+exStrike+")"}, oblig:{name:"Dave (assigned · "+(cov==="covered"?"covered ✅":"naked ⚠️")+")"}, oi:0,
+    { title:"Link 4 · Expiration: Carol exercises → Dave assigned", right:{name:"Carol (exercises @ $"+exStrike+")"}, oblig:{name:"Dave (assigned · "+(cov==="covered"?"covered":"naked")+")"}, oi:0,
       money:money4, msg:link4 }
   ];
 }
@@ -439,10 +434,10 @@ function renderChain(){
     rows += '<div class="ledger-row'+(latest?' latest':'')+'">'+
       '<div class="lr-num">'+i+'</div><div>'+
       '<div class="lr-title">'+s.title+'</div>'+
-      (s.money?'<div class="lr-money">💵 '+s.money+'</div>':'')+
+      (s.money?'<div class="lr-money">'+s.money+'</div>':'')+
       '<div class="lr-people">'+
-        '<span class="pill right">🟢 Right: '+(s.right?s.right.name:'—')+'</span>'+
-        '<span class="pill oblig">🔴 Obligation: '+(s.oblig?s.oblig.name:'—')+'</span>'+
+        '<span class="pill right">Right: '+(s.right?s.right.name:'—')+'</span>'+
+        '<span class="pill oblig">Obligation: '+(s.oblig?s.oblig.name:'—')+'</span>'+
         '<span class="pill oi">Open interest: '+s.oi+'</span>'+
       '</div></div></div>';
   }
@@ -483,10 +478,10 @@ function drawMargin(){
   const mb=$("mMoney"); mb.textContent=mm.t; mb.style.background=mm.c+"22"; mb.style.color=mm.c; mb.style.border="1px solid "+mm.c;
 
   let sev,color,text;
-  if(nlv<0){ sev=4; color="#8b0000"; text="💥 STAGE 4 · DEBIT BALANCE — Your loss blew past all your cash. Equity is <b>"+fmt(nlv)+"</b>. Even after the broker liquidates, you still <b>OWE "+fmt(-nlv)+"</b>. A real debt."; }
-  else if(excess<0){ sev=2; color="#b62324"; text="🔔 STAGE 2 · MARGIN CALL (maintenance) — Equity ("+fmt(nlv)+") fell below the requirement ("+fmt(req)+"). <b>Deposit "+fmt(-excess)+" now</b>, or the broker force-closes you (STAGE 3 liquidation) at these ugly prices."; }
-  else if(excess<0.5*req){ sev=1; color="#9e6a00"; text="⚠️ STAGE 1 · WARNING — Still OK, but the cushion is thin (excess "+fmt(excess)+" over a "+fmt(req)+" requirement). One more adverse move triggers a margin call."; }
-  else { sev=0; color="#1a7f37"; text="✅ HEALTHY — Equity "+fmt(nlv)+" comfortably covers the "+fmt(req)+" requirement (excess "+fmt(excess)+"). No margin call."; }
+  if(nlv<0){ sev=4; color="#8b0000"; text="STAGE 4 · DEBIT BALANCE — Your loss blew past all your cash. Equity is <b>"+fmt(nlv)+"</b>. Even after the broker liquidates, you still <b>OWE "+fmt(-nlv)+"</b>. A real debt."; }
+  else if(excess<0){ sev=2; color="#b62324"; text="STAGE 2 · MARGIN CALL (maintenance) — Equity ("+fmt(nlv)+") fell below the requirement ("+fmt(req)+"). <b>Deposit "+fmt(-excess)+" now</b>, or the broker force-closes you (STAGE 3 liquidation) at these ugly prices."; }
+  else if(excess<0.5*req){ sev=1; color="#9e6a00"; text="STAGE 1 · WARNING — Still OK, but the cushion is thin (excess "+fmt(excess)+" over a "+fmt(req)+" requirement). One more adverse move triggers a margin call."; }
+  else { sev=0; color="#1a7f37"; text="HEALTHY — Equity "+fmt(nlv)+" comfortably covers the "+fmt(req)+" requirement (excess "+fmt(excess)+"). No margin call."; }
   const ban=$("mBanner"); ban.style.background=color+"22"; ban.style.border="1px solid "+color; ban.style.color="#e6edf3"; ban.innerHTML=text;
 
   $("mStats").innerHTML =
@@ -516,7 +511,7 @@ function drawQuote(){
   $("qAskV").textContent="$"+ask.toFixed(2);
   $("qMidV").textContent="$"+mid.toFixed(2);
   $("qSprV").textContent=(spr<0?"−$":"$")+Math.abs(spr).toFixed(2);
-  $("qSprNote").textContent = spr<0 ? "bid > ask?! crossed" : spr<=0.10 ? "tight = liquid 👍" : spr<=0.50 ? "moderate" : "wide = illiquid ⚠️";
+  $("qSprNote").textContent = spr<0 ? "bid > ask?! crossed" : spr<=0.10 ? "tight = liquid" : spr<=0.50 ? "moderate" : "wide = illiquid";
 }
 [qBid,qAsk].forEach(el=> el.addEventListener("input",drawQuote));
 drawQuote();
