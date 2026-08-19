@@ -215,6 +215,7 @@
     </div>
 
     <div class="ledger" id="ledger"></div>
+    <div class="legend" style="margin-top:6px">Each row's right side shows the <b>premium</b> (the option's price per share) at open &amp; close. At expiration the premium = the option's <b>intrinsic value</b> — stock − strike for a call (strike − stock for a put) — because time value is 0 in this model.</div>
     <div class="msg" id="chainMsg"></div>
     <div class="btns">
       <button id="nextBtn">Next step ▶</button>
@@ -481,8 +482,8 @@ function renderChain(){
       '</div>'+
       (d?'<div class="lr-detail">'+
         '<div><span class="dk">Strike</span> $'+d.K+'</div>'+
-        '<div><span class="dk">Open</span> $'+d.sOpen+' @ $'+d.pOpen+'/sh</div>'+
-        '<div><span class="dk">Close</span> $'+d.sClose+' @ $'+d.pClose+'/sh</div>'+
+        '<div><span class="dk">Open</span> premium $'+d.pOpen+'/sh (stock $'+d.sOpen+')</div>'+
+        '<div><span class="dk">Close</span> premium $'+d.pClose+'/sh (stock $'+d.sClose+')</div>'+
       '</div>':'')+
       '</div>';
   }
@@ -577,6 +578,18 @@ function drawQuote(){
 }
 [qBid,qAsk].forEach(el=> el.addEventListener("input",drawQuote));
 drawQuote();
+
+// Panel 1 (payoff) also drives Panel 3 (margin sim) and Panel 4 (quote).
+function syncPanels34(){
+  const p=+premEl.value, k=+strikeEl.value, s=+spotEl.value;
+  const isPut=posEl.value.toLowerCase().includes("put");
+  mK.value=k; mPrem.value=p; mSpot.value=s; mPos.value=isPut?"shortPut":"shortCall";
+  drawMargin();
+  qBid.value=Math.max(0.01,p-0.05).toFixed(2); qAsk.value=(p+0.05).toFixed(2);
+  drawQuote();
+}
+[strikeEl, premEl, spotEl, posEl].forEach(el=> el.addEventListener("input", syncPanels34));
+syncPanels34();
 </script>
 </body>
 </html>
